@@ -1,0 +1,38 @@
+# ===== Java / Maven =====
+target/
+*.jar
+*.war
+*.class
+!.mvn/wrapper/maven-wrapper.jar
+mvnw.cmd.bak
+
+# ===== Node / Frontend =====
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== Environment / secrets =====
+.env
+.env.local
+*.local
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Logs =====
+*.log
+
+# ===== Claude / local tooling =====
+.claude/settings.local.json

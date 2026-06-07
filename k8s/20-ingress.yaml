@@ -1,0 +1,48 @@
+# Single entry point that path-routes to each service.
+#
+# On AWS EKS this provisions an Application Load Balancer via the AWS Load Balancer
+# Controller (must be installed in the cluster). Locally (minikube/kind) install the
+# NGINX ingress controller and change ingressClassName to "nginx".
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hospital-ingress
+  namespace: hospital
+  annotations:
+    # --- AWS ALB settings (ignored by other controllers) ---
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+spec:
+  ingressClassName: alb          # use "nginx" for local minikube/kind
+  rules:
+    - http:
+        paths:
+          - path: /patients
+            pathType: Prefix
+            backend:
+              service:
+                name: patient-service
+                port:
+                  number: 8081
+          - path: /doctors
+            pathType: Prefix
+            backend:
+              service:
+                name: doctor-service
+                port:
+                  number: 8083
+          - path: /appointments
+            pathType: Prefix
+            backend:
+              service:
+                name: appointment-service
+                port:
+                  number: 8084
+          - path: /bills
+            pathType: Prefix
+            backend:
+              service:
+                name: billing-service
+                port:
+                  number: 8085

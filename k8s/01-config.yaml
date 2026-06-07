@@ -1,0 +1,26 @@
+# Shared configuration and credentials for all services.
+# Service hostnames (mysql, kafka, patient-service, ...) match the Kubernetes
+# Service names below, so in-cluster DNS resolves them exactly like Docker Compose did.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hospital-config
+  namespace: hospital
+data:
+  SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/hospital_db
+  SPRING_JPA_HIBERNATE_DDL_AUTO: update
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  PATIENT_SERVICE_URL: http://patient-service:8081
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+  namespace: hospital
+type: Opaque
+stringData:
+  # Demo credentials. For a real AWS deployment, source these from
+  # AWS Secrets Manager via the Secrets Store CSI driver instead.
+  MYSQL_ROOT_PASSWORD: root
+  SPRING_DATASOURCE_USERNAME: root
+  SPRING_DATASOURCE_PASSWORD: root
