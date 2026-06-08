@@ -4,6 +4,11 @@ A scalable Hospital Management System built with **Spring Boot microservices**. 
 CRUD operations, inter-service communication (**Spring Cloud OpenFeign** + **Apache Kafka**),
 **circuit breaking with Resilience4j**, and containerized deployment with **Docker Compose**.
 
+> 📄 **Full project report:** a detailed Word document with explanations, architecture diagrams, and
+> app screenshots is available at
+> [docs/Hospital_Management_System_Documentation.docx](docs/Hospital_Management_System_Documentation.docx)
+> (see also [DOCUMENTATION.md](DOCUMENTATION.md)).
+
 ---
 
 ## Architecture

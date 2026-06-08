@@ -36,3 +36,6 @@ Thumbs.db
 
 # ===== Claude / local tooling =====
 .claude/settings.local.json
+
+# doc generation tooling
+.docgen/
