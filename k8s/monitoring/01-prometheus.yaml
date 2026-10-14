@@ -1,0 +1,93 @@
+# Prometheus: scrapes /actuator/prometheus on every Spring Boot service in the
+# `hospital` namespace. Apply this file BEFORE 02-grafana.yaml (it creates the namespace).
+#
+# Requires: micrometer-registry-prometheus in each service (added to every pom.xml) and
+# MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=...prometheus... (set in k8s/1x-*.yaml).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+    scrape_configs:
+      - job_name: prometheus
+        static_configs:
+          - targets: ['localhost:9090']
+
+      - job_name: hospital-services
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ['patient-service.hospital.svc.cluster.local:8081']
+            labels: { service: patient-service }
+          - targets: ['doctor-service.hospital.svc.cluster.local:8083']
+            labels: { service: doctor-service }
+          - targets: ['appointment-service.hospital.svc.cluster.local:8084']
+            labels: { service: appointment-service }
+          - targets: ['billing-service.hospital.svc.cluster.local:8085']
+            labels: { service: billing-service }
+          - targets: ['auth-service.hospital.svc.cluster.local:8086']
+            labels: { service: auth-service }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.53.0
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.retention.time=2d
+          ports:
+            - containerPort: 9090
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              memory: "512Mi"
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090
+  type: ClusterIP

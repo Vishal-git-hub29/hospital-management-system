@@ -1,0 +1,56 @@
+# Local (minikube / kind) version of 20-ingress.yaml: same routes, NGINX ingress class,
+# no AWS ALB annotations. Needs: minikube addons enable ingress
+# This folder is NOT picked up by `kubectl apply -f k8s/` (kubectl is non-recursive),
+# so it never collides with the ALB ingress. Apply it explicitly for local clusters.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hospital-ingress
+  namespace: hospital
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /patients
+            pathType: Prefix
+            backend:
+              service:
+                name: patient-service
+                port:
+                  number: 8081
+          - path: /doctors
+            pathType: Prefix
+            backend:
+              service:
+                name: doctor-service
+                port:
+                  number: 8083
+          - path: /appointments
+            pathType: Prefix
+            backend:
+              service:
+                name: appointment-service
+                port:
+                  number: 8084
+          - path: /bills
+            pathType: Prefix
+            backend:
+              service:
+                name: billing-service
+                port:
+                  number: 8085
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8086
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80

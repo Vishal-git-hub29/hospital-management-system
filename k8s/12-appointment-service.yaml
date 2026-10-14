@@ -20,6 +20,8 @@ spec:
           ports:
             - containerPort: 8084
           env:
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "health,info,prometheus,circuitbreakers"
             - name: SPRING_DATASOURCE_URL
               valueFrom:
                 configMapKeyRef:
