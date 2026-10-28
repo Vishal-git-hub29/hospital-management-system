@@ -118,6 +118,7 @@ services:
   billing-service:
     build: ./billing-service
     container_name: billing-service
+    restart: on-failure
     depends_on:
       kafka:
         condition: service_started
