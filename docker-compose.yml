@@ -167,7 +167,7 @@ services:
       - billing-service
       - auth-service
     ports:
-      - "8080:80"
+      - "8082:80"
     networks:
       - hospital-net
 
