@@ -1,0 +1,65 @@
+name: Deploy to k3s
+
+# Runs after the CI workflow succeeds on main (images are already on Docker Hub),
+# copies k8s/ to the server over SSH and applies it with kustomize.
+#
+# Repo secrets needed (Settings -> Secrets and variables -> Actions):
+#   DEPLOY_HOST     server IP / DNS name
+#   DEPLOY_SSH_KEY  private key whose public half is in ~ubuntu/.ssh/authorized_keys on the server
+# One-time on the server: the `auth-secret` Kubernetes secret (see docs/DEVOPS_GUIDE.md).
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Image tag to deploy (default latest)
+        default: latest
+
+concurrency:
+  group: deploy-k3s
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    env:
+      HOST: ${{ secrets.DEPLOY_HOST }}
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Set up SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+
+      - name: Copy manifests
+        run: |
+          ssh -i ~/.ssh/id_deploy ubuntu@"$HOST" 'rm -rf ~/hospital-k8s && mkdir -p ~/hospital-k8s'
+          scp -i ~/.ssh/id_deploy -r k8s/. ubuntu@"$HOST":~/hospital-k8s/
+
+      - name: Apply and wait for rollout
+        run: |
+          ssh -i ~/.ssh/id_deploy ubuntu@"$HOST" "TAG=$TAG bash -s" <<'REMOTE'
+          set -euo pipefail
+          K="sudo k3s kubectl"
+          cd ~/hospital-k8s
+          sed -i "s/newTag: latest/newTag: ${TAG}/" k3s/kustomization.yaml
+          $K kustomize k3s --load-restrictor LoadRestrictionsNone | $K apply -f -
+          for d in mysql kafka patient-service doctor-service appointment-service billing-service auth-service frontend; do
+            $K -n hospital rollout status deployment/$d --timeout=600s
+          done
+          $K -n hospital get pods
+          REMOTE

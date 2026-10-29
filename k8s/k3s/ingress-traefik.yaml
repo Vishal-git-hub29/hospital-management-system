@@ -1,0 +1,31 @@
+# Same routes as k8s/20-ingress.yaml, for the Traefik ingress that k3s installs by default.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hospital-ingress
+  namespace: hospital
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - http:
+        paths:
+          - path: /patients
+            pathType: Prefix
+            backend: { service: { name: patient-service, port: { number: 8081 } } }
+          - path: /doctors
+            pathType: Prefix
+            backend: { service: { name: doctor-service, port: { number: 8083 } } }
+          - path: /appointments
+            pathType: Prefix
+            backend: { service: { name: appointment-service, port: { number: 8084 } } }
+          - path: /bills
+            pathType: Prefix
+            backend: { service: { name: billing-service, port: { number: 8085 } } }
+          - path: /auth
+            pathType: Prefix
+            backend: { service: { name: auth-service, port: { number: 8086 } } }
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: frontend, port: { number: 80 } } }
