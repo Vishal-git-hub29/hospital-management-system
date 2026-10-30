@@ -47,6 +47,15 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/livenessProbe/initialDelaySeconds
         value: 180
+  # Single-node server with little free RAM: stop each old pod before starting its replacement
+  # (no surge pod), otherwise a deploy needs ~2x the memory and rollouts time out.
+  - target: { kind: Deployment, name: "(.*-service|frontend)" }
+    patch: |-
+      - op: add
+        path: /spec/strategy
+        value:
+          type: RollingUpdate
+          rollingUpdate: { maxSurge: 0, maxUnavailable: 1 }
   - target: { kind: Deployment, name: mysql }
     patch: |-
       - op: replace

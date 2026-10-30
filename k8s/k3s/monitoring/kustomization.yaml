@@ -1,0 +1,58 @@
+# Prometheus + Grafana for the single-node k3s server, with reduced memory settings.
+#
+# One-time, before the first apply (do NOT commit a real password):
+#   sudo k3s kubectl create namespace monitoring
+#   sudo k3s kubectl -n monitoring create secret generic grafana-admin \
+#     --from-literal=GF_SECURITY_ADMIN_PASSWORD='choose-a-strong-password'
+#
+# Apply on the server (deploy.yml does this automatically once the secret exists):
+#   sudo k3s kubectl kustomize k3s/monitoring --load-restrictor LoadRestrictionsNone | sudo k3s kubectl apply -f -
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../monitoring/01-prometheus.yaml
+  - ../../monitoring/02-grafana.yaml
+
+patches:
+  - target: { kind: Deployment, name: prometheus }
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: { cpu: 50m, memory: 128Mi }
+          limits: { memory: 320Mi }
+      - op: replace
+        path: /spec/template/spec/containers/0/args/1
+        value: --storage.tsdb.retention.time=1d
+  - target: { kind: Deployment, name: grafana }
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: { cpu: 50m, memory: 96Mi }
+          limits: { memory: 256Mi }
+  - target: { kind: ConfigMap, name: prometheus-config }
+    patch: |-
+      - op: replace
+        path: /data/prometheus.yml
+        value: |
+          global:
+            scrape_interval: 30s
+          scrape_configs:
+            - job_name: prometheus
+              static_configs:
+                - targets: ['localhost:9090']
+            - job_name: hospital-services
+              metrics_path: /actuator/prometheus
+              static_configs:
+                - targets: ['patient-service.hospital.svc.cluster.local:8081']
+                  labels: { service: patient-service }
+                - targets: ['doctor-service.hospital.svc.cluster.local:8083']
+                  labels: { service: doctor-service }
+                - targets: ['appointment-service.hospital.svc.cluster.local:8084']
+                  labels: { service: appointment-service }
+                - targets: ['billing-service.hospital.svc.cluster.local:8085']
+                  labels: { service: billing-service }
+                - targets: ['auth-service.hospital.svc.cluster.local:8086']
+                  labels: { service: auth-service }

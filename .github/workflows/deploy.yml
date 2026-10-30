@@ -55,11 +55,19 @@ jobs:
           ssh -i ~/.ssh/id_deploy ubuntu@"$HOST" "TAG=$TAG bash -s" <<'REMOTE'
           set -euo pipefail
           K="sudo k3s kubectl"
+          trap 'echo "--- deploy failed, cluster state ---"; $K -n hospital get pods -o wide; $K -n hospital get events --sort-by=.lastTimestamp | tail -15; free -h' ERR
           cd ~/hospital-k8s
           sed -i "s/newTag: latest/newTag: ${TAG}/" k3s/kustomization.yaml
           $K kustomize k3s --load-restrictor LoadRestrictionsNone | $K apply -f -
           for d in mysql kafka patient-service doctor-service appointment-service billing-service auth-service frontend; do
-            $K -n hospital rollout status deployment/$d --timeout=600s
+            $K -n hospital rollout status deployment/$d --timeout=900s
           done
           $K -n hospital get pods
+          # Monitoring is optional: it is deployed only after the grafana-admin secret exists.
+          if $K -n monitoring get secret grafana-admin >/dev/null 2>&1; then
+            $K kustomize k3s/monitoring --load-restrictor LoadRestrictionsNone | $K apply -f -
+            $K -n monitoring rollout status deployment/prometheus --timeout=300s
+            $K -n monitoring rollout status deployment/grafana --timeout=300s
+            $K -n monitoring get pods
+          fi
           REMOTE
